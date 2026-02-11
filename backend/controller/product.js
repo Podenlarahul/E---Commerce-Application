@@ -8,6 +8,7 @@ const Shop = require("../model/shop");
 const { upload } = require("../multer");
 const ErrorHandler = require("../utils/ErrorHandler");
 const fs = require("fs");
+const { getUploadFilePath } = require("../utils/uploadPath");
 
 // create product
 router.post(
@@ -68,8 +69,7 @@ router.delete(
       const productData = await Product.findById(productId);
 
       productData.images.forEach((imageUrl) => {
-        const filename = imageUrl;
-        const filePath = `uploads/${filename}`;
+        const filePath = getUploadFilePath(imageUrl);
 
         fs.unlink(filePath, (err) => {
           if (err) {

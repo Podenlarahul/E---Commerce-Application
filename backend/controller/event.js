@@ -8,6 +8,7 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const { isSeller, isAdmin, isAuthenticated } = require("../middleware/auth");
 const router = express.Router();
 const fs = require("fs");
+const { getUploadFilePath } = require("../utils/uploadPath");
 
 // create event
 router.post(
@@ -81,8 +82,7 @@ router.delete(
       const eventData = await Event.findById(productId);
 
       eventData.images.forEach((imageUrl) => {
-        const filename = imageUrl;
-        const filePath = `uploads/${filename}`;
+        const filePath = getUploadFilePath(imageUrl);
 
         fs.unlink(filePath, (err) => {
           if (err) {

@@ -3,14 +3,16 @@ import Header from "../components/Layout/Header";
 import { useSelector } from "react-redux";
 import socketIO from "socket.io-client";
 import { format } from "timeago.js";
-import { backend_url, server } from "../server";
+import { backend_url, server, socket_server } from "../server";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AiOutlineArrowRight, AiOutlineSend } from "react-icons/ai";
 import { TfiGallery } from "react-icons/tfi";
 import styles from "../styles/styles";
-const ENDPOINT = "http://localhost:4000/";
-const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
+const ENDPOINT = socket_server;
+const socketId = ENDPOINT
+  ? socketIO(ENDPOINT, { transports: ["websocket"] })
+  : null;
 
 const UserInbox = () => {
   const { user } = useSelector((state) => state.user);
@@ -27,6 +29,8 @@ const UserInbox = () => {
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    if (!socketId) return;
+
     socketId.on("getMessage", (data) => {
       setArrivalMessage({
         sender: data.senderId,
@@ -34,6 +38,10 @@ const UserInbox = () => {
         createdAt: Date.now(),
       });
     });
+
+    return () => {
+      socketId.off("getMessage");
+    };
   }, []);
 
   useEffect(() => {
@@ -61,13 +69,19 @@ const UserInbox = () => {
   }, [user, messages]);
 
   useEffect(() => {
-    if (user) {
+    if (user && socketId) {
       const userId = user?._id;
       socketId.emit("addUser", userId);
       socketId.on("getUsers", (data) => {
         setOnlineUsers(data);
       });
     }
+
+    return () => {
+      if (socketId) {
+        socketId.off("getUsers");
+      }
+    };
   }, [user]);
 
   const onlineCheck = (chat) => {
@@ -105,7 +119,7 @@ const UserInbox = () => {
       (member) => member !== user?._id
     );
 
-    socketId.emit("sendMessage", {
+    socketId?.emit("sendMessage", {
       senderId: user?._id,
       receiverId,
       text: newMessage,
@@ -129,7 +143,7 @@ const UserInbox = () => {
   };
 
   const updateLastMessage = async () => {
-    socketId.emit("updateLastMessage", {
+    socketId?.emit("updateLastMessage", {
       lastMessage: newMessage,
       lastMessageId: user._id,
     });
@@ -165,7 +179,7 @@ const UserInbox = () => {
       (member) => member !== user._id
     );
 
-    socketId.emit("sendMessage", {
+    socketId?.emit("sendMessage", {
       senderId: user._id,
       receiverId,
       images: e,

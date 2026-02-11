@@ -9,8 +9,12 @@ import styles from "../../styles/styles";
 import { TfiGallery } from "react-icons/tfi";
 import socketIO from "socket.io-client";
 import { format } from "timeago.js";
-const ENDPOINT = "http://localhost:4000/";
-const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
+import { socket_server } from "../../server";
+
+const ENDPOINT = socket_server;
+const socketId = ENDPOINT
+  ? socketIO(ENDPOINT, { transports: ["websocket"] })
+  : null;
 
 const DashboardMessages = () => {
   const { seller } = useSelector((state) => state.seller);
@@ -27,6 +31,8 @@ const DashboardMessages = () => {
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    if (!socketId) return;
+
     socketId.on("getMessage", (data) => {
       setArrivalMessage({
         sender: data.senderId,
@@ -34,6 +40,10 @@ const DashboardMessages = () => {
         createdAt: Date.now(),
       });
     });
+
+    return () => {
+      socketId.off("getMessage");
+    };
   }, []);
 
   useEffect(() => {
@@ -61,13 +71,19 @@ const DashboardMessages = () => {
   }, [seller, messages]);
 
   useEffect(() => {
-    if (seller) {
+    if (seller && socketId) {
       const userId = seller?._id;
       socketId.emit("addUser", userId);
       socketId.on("getUsers", (data) => {
         setOnlineUsers(data);
       });
     }
+
+    return () => {
+      if (socketId) {
+        socketId.off("getUsers");
+      }
+    };
   }, [seller]);
 
   const onlineCheck = (chat) => {
@@ -105,7 +121,7 @@ const DashboardMessages = () => {
       (member) => member.id !== seller._id
     );
 
-    socketId.emit("sendMessage", {
+    socketId?.emit("sendMessage", {
       senderId: seller._id,
       receiverId,
       text: newMessage,
@@ -129,7 +145,7 @@ const DashboardMessages = () => {
   };
 
   const updateLastMessage = async () => {
-    socketId.emit("updateLastMessage", {
+    socketId?.emit("updateLastMessage", {
       lastMessage: newMessage,
       lastMessageId: seller._id,
     });
@@ -168,7 +184,7 @@ const DashboardMessages = () => {
       (member) => member !== seller._id
     );
 
-    socketId.emit("sendMessage", {
+    socketId?.emit("sendMessage", {
       senderId: seller._id,
       receiverId,
       images: e,

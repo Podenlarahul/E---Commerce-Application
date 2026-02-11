@@ -9,6 +9,7 @@ const sendMail = require("../utils/sendMail");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
 const { isAuthenticated, isAdmin } = require("../middleware/auth");
+const { getUploadFilePath } = require("../utils/uploadPath");
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
     if (userEmail) {
       // if user already exits account is not create and file is deleted
       const filename = req.file.filename;
-      const filePath = `uploads/${filename}`;
+      const filePath = getUploadFilePath(filename);
       fs.unlink(filePath, (err) => {
         if (err) {
           console.log(err);
@@ -43,7 +44,8 @@ router.post("/create-user", upload.single("file"), async (req, res, next) => {
 
     const activationToken = createActivationToken(user);
 
-    const activationUrl = `http://localhost:3000/activation/${activationToken}`;
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    const activationUrl = `${clientUrl}/activation/${activationToken}`;
 
     // send email to user
     try {
@@ -231,9 +233,10 @@ router.put(
     try {
       const existsUser = await User.findById(req.user.id);
 
-      const existAvatarPath = `uploads/${existsUser.avatar}`;
-
-      fs.unlinkSync(existAvatarPath); // Delete Priviuse Image
+      const existAvatarPath = getUploadFilePath(existsUser.avatar);
+      if (fs.existsSync(existAvatarPath)) {
+        fs.unlinkSync(existAvatarPath);
+      }
 
       const fileUrl = path.join(req.file.filename); // new image
 

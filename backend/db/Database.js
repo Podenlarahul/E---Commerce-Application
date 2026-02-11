@@ -1,14 +1,24 @@
 const mongoose = require("mongoose");
 
+let cachedConnection = null;
+
 const connectDatabase = () => {
-  mongoose
-    .connect(process.env.DB_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    })
+  if (cachedConnection) {
+    return cachedConnection;
+  }
+
+  cachedConnection = mongoose
+    .connect(process.env.DB_URL)
     .then((data) => {
-      console.log(`mongod connected with server: ${data.connection.host}`);
+      console.log(`MongoDB connected: ${data.connection.host}`);
+      return data;
+    })
+    .catch((error) => {
+      cachedConnection = null;
+      throw error;
     });
+
+  return cachedConnection;
 };
 
 module.exports = connectDatabase;

@@ -9,6 +9,7 @@ const { isAuthenticated, isSeller, isAdmin } = require("../middleware/auth");
 const { upload } = require("../multer");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const ErrorHandler = require("../utils/ErrorHandler");
+const { getUploadFilePath } = require("../utils/uploadPath");
 
 const sendShopToken = require("../utils/shopToken");
 
@@ -20,7 +21,7 @@ router.post("/create-shop", upload.single("file"), async (req, res, next) => {
 
     if (sellerEmail) {
       const filename = req.file.filename;
-      const filePath = `uploads/${filename}`;
+      const filePath = getUploadFilePath(filename);
       fs.unlink(filePath, (err) => {
         if (err) {
           console.log(err);
@@ -45,7 +46,8 @@ router.post("/create-shop", upload.single("file"), async (req, res, next) => {
 
     const activationToken = createActivationToken(seller);
 
-    const activationUrl = `http://localhost:3000/seller/activation/${activationToken}`;
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+    const activationUrl = `${clientUrl}/seller/activation/${activationToken}`;
 
     try {
       await sendMail({
@@ -211,9 +213,10 @@ router.put(
     try {
       const existsUser = await Shop.findById(req.seller._id);
 
-      const existAvatarPath = `uploads/${existsUser.avatar}`;
-
-      fs.unlinkSync(existAvatarPath);
+      const existAvatarPath = getUploadFilePath(existsUser.avatar);
+      if (fs.existsSync(existAvatarPath)) {
+        fs.unlinkSync(existAvatarPath);
+      }
 
       const fileUrl = path.join(req.file.filename);
 
